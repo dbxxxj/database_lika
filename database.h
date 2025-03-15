@@ -4,13 +4,15 @@
 
 typedef enum { ACTIVE, BANNED, REMOVED } Status;
 
+const char* status_strings[3];
+
 typedef struct {
 	int uid;
 	char first_name[50];
 	char last_name[50];
 	char email[100];
-	time_t last_visit;
-	time_t registration_date;
+	struct tm last_visit;
+	struct tm registration_date;
 	Status status;
 }User;
 

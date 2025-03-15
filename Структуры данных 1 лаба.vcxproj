@@ -128,12 +128,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="database.h" />
+    <ClInclude Include="memstat.h" />
     <ClInclude Include="parser.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="database.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="memstat.c" />
     <ClCompile Include="parser.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
