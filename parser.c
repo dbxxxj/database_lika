@@ -183,20 +183,17 @@ int parse_select(const char* args, ParsedSelectCommand* command) {
 int parse_delete(const char* args, Condition* conditions, int* conditions_count) {
     const int args_len = strlen(args);
     char* arg_copy = (char*)lika_malloc(args_len + 1);
-    strcpy(arg_copy, args);  
+    strcpy(arg_copy, args);
     char* save_pointer;
     char* token = strtok_lika(arg_copy, ' ', &save_pointer);
-    token = strtok_lika(NULL, ' ', &save_pointer);
 
-    
     while (token) {
-       
         char condition[100];
-        strcpy(condition, token);  
-        
+        strcpy(condition, token);
+
         if (!parse_condition(condition, &conditions[*conditions_count])) {
             printf("incorrect: %.*s\n", 20, args);
-            return 0;  
+            return 0;
         }
 
         (*conditions_count)++;
@@ -204,9 +201,97 @@ int parse_delete(const char* args, Condition* conditions, int* conditions_count)
         token = strtok_lika(NULL, ' ', &save_pointer);
     }
 
-    
+
     lika_free(arg_copy);
-    return 1;  
+    return 1;
+}
+int parse_update(const char* args, ParsedUpdateCommand* command) {
+    const int args_len = strlen(args);
+    char* arg_copy = (char*)lika_malloc(args_len + 1);
+    strcpy(arg_copy, args);
+
+    char* save_pointer;
+    char* token = strtok_lika(arg_copy, ' ', &save_pointer);
+
+    char* field_save_pointer;
+    char* field = strtok_lika(token, ',', &field_save_pointer);
+    while (field) {
+        char* equal = strchr(field, '=');
+        if (!equal)
+            return 0;
+
+        *equal = '\0';
+        char* key = field;
+        char* value = equal + 1;
+
+        const int key_length = strlen(key);
+        const int value_length = strlen(value);
+
+        for (int index = 0; index < command->fields_count; index++) // если поле уже обновляется
+            if (strncmp(key, command->updating_fields[index], key_length) == 0)
+                return 0;
+
+        command->updating_fields[command->fields_count] = (char*)lika_malloc(key_length + 1);
+        strncpy(command->updating_fields[command->fields_count], field, key_length);
+        command->fields_count++;
+
+        if (strcmp(key, "uid") == 0) {
+            command->new_user.uid = atoi(value);
+        }
+
+        else if (strcmp(key, "first_name") == 0) {
+            strncpy(command->new_user.first_name, value + 1, value_length - 2);
+        }
+
+        else if (strcmp(key, "last_name") == 0) {
+            strncpy(command->new_user.last_name, value + 1, value_length - 2);
+        }
+
+        else if (strcmp(key, "email") == 0) {
+            strncpy(command->new_user.email, value + 1, value_length - 2);
+        }
+
+        else if (strcmp(key, "status") == 0) {
+            for (int index = 0; index < 3; index++) {
+                if (strncmp(status_strings[index], value + 1, value_length - 2) == 0)
+                    command->new_user.status = index;
+            }
+        }
+
+        else if (strcmp(key, "last_visit") == 0) {
+            sscanf(value, "\"%d:%d:%d\"",
+                &command->new_user.last_visit.tm_hour, &command->new_user.last_visit.tm_min, &command->new_user.last_visit.tm_sec);
+        }
+
+        else if (strcmp(key, "registration_date") == 0) {
+            sscanf(value, "\"%d.%d.%d\"",
+                &command->new_user.registration_date.tm_mday, &command->new_user.registration_date.tm_mon, &command->new_user.registration_date.tm_year);
+        }
+
+        else {
+            printf("incorrect: %.*s\n", 20, args);
+            return 0;
+        }
+
+        field = strtok_lika(NULL, ',', &field_save_pointer);
+    }
+
+    token = strtok_lika(NULL, ' ', &save_pointer);
+    while (token) {
+        char condition[40];
+        strcpy(condition, token);
+        if (!parse_condition(condition, &command->conditions[command->conditions_count])) {
+            printf("incorrect: %.*s\n", 20, args);
+            return 0;
+        }
+
+        command->conditions_count++;
+
+        token = strtok_lika(NULL, ' ', &save_pointer);
+    }
+
+    lika_free(arg_copy);
+    return 1;
 }
 
 
@@ -240,6 +325,23 @@ void process_command(const char* command, Database* db) {
 
         lika_free(conditions);
     }
+
+    if (strncmp(command, "update", 6) == 0) {
+        ParsedUpdateCommand parsed_command;
+        memset(&parsed_command, 0, sizeof(ParsedUpdateCommand));
+        if (parse_update(command + 7, &parsed_command)) {
+            if (!update(db, parsed_command)) {
+                printf("incorrect: %.*s\n", 20, command);
+            }
+        }
+
+        else printf("incorrect: %.*s\n", 20, command);
+
+        for (int index = 0; index < parsed_command.fields_count; index++) {
+            lika_free(parsed_command.updating_fields[index]);
+        }
+    }
+
 
 
 }

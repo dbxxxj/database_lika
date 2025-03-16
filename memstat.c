@@ -4,6 +4,7 @@
 
 Memstat memstat;
 
+
 void* lika_malloc(size_t size) {
 	memstat.malloc_count++;
 	return malloc(size);
@@ -23,3 +24,5 @@ void lika_free(void* pointer) {
 	memstat.free_count++;
 	free(pointer);
 }
+
+

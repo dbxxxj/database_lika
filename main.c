@@ -9,5 +9,7 @@ int main(void) {
 	db.head = NULL;
 	process_command("insert uid=25,first_name=\"hello\",last_name=\"db\",email=\"lika@rossia.ru\",last_visit=\"23:03:11\",registration_date=\"15.04.2025\",status=\'removed\'", &db);
 	process_command("select first_name,last_name,email uid>5 status=='removed'", &db);
-	process_command("delete uid>5",&db);
-}
+	process_command("delete status/in/['active','removed'] last_visit<\"20:02:01\"", &db);
+	process_command("update first_name=\"physics\",status='banned' status=='removed' registration_date>\"15.01.2005\"", &db);
+
+	}

@@ -35,14 +35,16 @@ int is_equal(User user, Condition condition) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d:%d:%d\"",
             &parsed_date.tm_hour, &parsed_date.tm_min, &parsed_date.tm_sec);
-        return memcmp(&parsed_date, &user.last_visit, sizeof(struct tm)) == 0;
+        return (user.last_visit.tm_hour * 3600 + user.last_visit.tm_min * 60 + user.last_visit.tm_sec)
+== (parsed_date.tm_hour * 3600 + parsed_date.tm_min * 60 + parsed_date.tm_sec);
     }
 
     if (strcmp(condition.field, "registration_date") == 0) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d.%d.%d\"",
             &parsed_date.tm_mday, &parsed_date.tm_mon, &parsed_date.tm_year);
-        return memcmp(&parsed_date, &user.registration_date, sizeof(struct tm)) == 0;
+        return (user.registration_date.tm_year * 365 + user.registration_date.tm_mon * 31 + user.registration_date.tm_mday)
+            == (parsed_date.tm_year * 365 + parsed_date.tm_mon * 31 + parsed_date.tm_mday);
     }
 
     return -1;
@@ -70,14 +72,16 @@ int is_greater(User user, Condition condition) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d:%d:%d\"",
             &parsed_date.tm_hour, &parsed_date.tm_min, &parsed_date.tm_sec);
-        return memcmp(&parsed_date, &user.last_visit, sizeof(struct tm)) > 0;
+        return (user.last_visit.tm_hour * 3600 + user.last_visit.tm_min * 60 + user.last_visit.tm_sec)
+        > (parsed_date.tm_hour * 3600 + parsed_date.tm_min * 60 + parsed_date.tm_sec);
     }
 
     if (strcmp(condition.field, "registration_date") == 0) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d.%d.%d\"",
             &parsed_date.tm_mday, &parsed_date.tm_mon, &parsed_date.tm_year);
-        return memcmp(&parsed_date, &user.registration_date, sizeof(struct tm)) > 0;
+        return (user.registration_date.tm_year * 365 + user.registration_date.tm_mon * 31 + user.registration_date.tm_mday)
+            > (parsed_date.tm_year * 365 + parsed_date.tm_mon * 31 + parsed_date.tm_mday);
     }
 
     return -1;
@@ -105,14 +109,16 @@ int is_less(User user, Condition condition) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d:%d:%d\"",
             &parsed_date.tm_hour, &parsed_date.tm_min, &parsed_date.tm_sec);
-        return memcmp(&parsed_date, &user.last_visit, sizeof(struct tm)) < 0;
+        return (user.last_visit.tm_hour * 3600 + user.last_visit.tm_min * 60 + user.last_visit.tm_sec)
+        < (parsed_date.tm_hour * 3600 + parsed_date.tm_min * 60 + parsed_date.tm_sec);
     }
 
     if (strcmp(condition.field, "registration_date") == 0) {
         struct tm parsed_date;
         sscanf(condition.value, "\"%d.%d.%d\"",
             &parsed_date.tm_mday, &parsed_date.tm_mon, &parsed_date.tm_year);
-        return memcmp(&parsed_date, &user.registration_date, sizeof(struct tm)) < 0;
+        return (user.registration_date.tm_year * 365 + user.registration_date.tm_mon * 31 + user.registration_date.tm_mday)
+            <(parsed_date.tm_year * 365 + parsed_date.tm_mon * 31 + parsed_date.tm_mday);
     }
 
     return -1;
@@ -261,7 +267,7 @@ int select(Database* db, ParsedSelectCommand command) {
 
     return 1;
 }
-int delete (Database* db, Condition* conditions, int* conditions_count){
+int delete (Database* db, Condition* conditions, int conditions_count){
     int deleted_count = 0; 
     Node* current = db->head;
     Node* prev = NULL;
@@ -275,7 +281,9 @@ int delete (Database* db, Condition* conditions, int* conditions_count){
                 return 0;  
             }
             if (!result) {
-                match = 0;  
+                match = 0;
+                
+
             }
         }
 
@@ -291,16 +299,80 @@ int delete (Database* db, Condition* conditions, int* conditions_count){
             current = current->next;  
 
            
-            free(to_delete);
+            lika_free(to_delete);
 
             deleted_count++;  
         }
         else {
+            
             prev = current;
             current = current->next;
+            
         }
     }
     printf("delete:%d\n", deleted_count);
 
     return 1; 
 }
+
+int update(Database* db, ParsedUpdateCommand command) {
+    int updated_count = 0;
+    Node* current = db->head;
+    while (current) {
+        int match = 1;
+        for (int index = 0; index < command.conditions_count; index++) {
+            int result = check_condition(current->data, command.conditions[index]);
+            if (result == -1)
+                return 0;
+
+            if (!result) {
+                match = 0;
+                break;
+            }
+        }
+
+        if (!match) {
+            current = current->next;
+            continue;
+        }
+
+        updated_count++;
+        for (int index = 0; index < command.fields_count; index++) {
+            if (strcmp(command.updating_fields[index], "uid") == 0) {
+                current->data.uid = command.new_user.uid;
+            }
+
+            else if (strcmp(command.updating_fields[index], "first_name") == 0) {
+                strcpy(current->data.first_name, command.new_user.first_name);
+            }
+
+            else if (strcmp(command.updating_fields[index], "last_name") == 0) {
+                strcpy(current->data.last_name, command.new_user.last_name);
+            }
+
+            else if (strcmp(command.updating_fields[index], "email") == 0) {
+                strcpy(current->data.email, command.new_user.email);
+            }
+
+            else if (strcmp(command.updating_fields[index], "last_visit") == 0) {
+                current->data.last_visit = command.new_user.last_visit;
+            }
+
+            else if (strcmp(command.updating_fields[index], "registration_date") == 0) {
+                current->data.registration_date = command.new_user.registration_date;
+            }
+
+            else if (strcmp(command.updating_fields[index], "status") == 0) {
+                current->data.status = command.new_user.status;
+            }
+
+            else return 0;
+        }
+
+        current = current->next;
+    }
+
+    printf("update:%d\n", updated_count);
+    return 1;
+}
+

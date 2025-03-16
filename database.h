@@ -50,6 +50,19 @@ typedef struct {
 	int conditons_count;
 } ParsedSelectCommand;
 
+typedef struct {
+	User new_user;
+
+	char* updating_fields[10];
+	int fields_count;
+
+	Condition conditions[10];
+	int conditions_count;
+
+} ParsedUpdateCommand;
+int update(Database* db, ParsedUpdateCommand command);
+
+
 int insert(Database* db, User user);
 int select(Database* db, ParsedSelectCommand command);
 int delete(Database* db, Condition* conditions, int conditions_count);

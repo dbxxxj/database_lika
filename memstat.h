@@ -13,4 +13,6 @@ void* lika_malloc(size_t);
 void* lika_calloc(size_t, size_t);
 void* lika_realloc(void*, size_t);
 void lika_free(void*);
+void print_memstat();
+
 #endif // MEMSTAT_H
