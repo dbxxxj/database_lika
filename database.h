@@ -1,6 +1,6 @@
 #ifndef DATABASE_H
 #define DATABASE_H
-# include<time.h>
+#include <time.h>
 
 typedef enum { ACTIVE, BANNED, REMOVED } Status;
 
@@ -21,24 +21,36 @@ typedef struct Node {
 	struct Node* next;
 }Node;
 
-typedef struct {
-	Node* head;
-	int length;
-} Database;
 typedef enum {
-	OP_EQUAL,       // ==
-	OP_NOT_EQUAL,   // !=
-	OP_LESS,        // <
-	OP_GREATER,     // >
-	OP_IN,          // /in/
-	OP_INCLUDE      // /include/
+	OP_EQUAL,            // ==
+	OP_NOT_EQUAL,        // !=
+	OP_LESS,             // <
+	OP_LESS_OR_EQUAL,    // <=
+	OP_GREATER,          // >
+	OP_GREATER_OR_EQUAL, // >=
+	OP_IN,               // /in/
 } ConditionType;
+
 typedef struct {
 	char field[50];
 	ConditionType op;
 	char value[100];
 } Condition;
 
-void insert(Database* db, User user);
-void select(Database* db, const char* conditions);
+typedef struct {
+	Node* head;
+	int length;
+} Database;
+
+typedef struct {
+	char* fields[10];
+	int fields_count;
+
+	Condition conditions[10];
+	int conditons_count;
+} ParsedSelectCommand;
+
+int insert(Database* db, User user);
+int select(Database* db, ParsedSelectCommand command);
+int delete(Database* db, Condition* conditions, int conditions_count);
 #endif // !DATABASE_H

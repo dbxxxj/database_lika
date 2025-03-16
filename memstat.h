@@ -1,3 +1,5 @@
+#ifndef MEMSTAT_H
+#define MEMSTAT_H
 #include <stdint.h>
 
 typedef struct {
@@ -11,3 +13,4 @@ void* lika_malloc(size_t);
 void* lika_calloc(size_t, size_t);
 void* lika_realloc(void*, size_t);
 void lika_free(void*);
+#endif // MEMSTAT_H

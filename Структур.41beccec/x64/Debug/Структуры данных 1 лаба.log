@@ -1,6 +1,5 @@
-﻿  database.c
-C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\database.c(25,2): warning C4013: printf: нет определения; предполагается "extern" с возвратом типа "int"
-  main.c
-  parser.c
-C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\parser.c(5,9): error C1083: Не удается открыть файл включение: stdlib: No such file or directory,
-  Создание кода...
+﻿  parser.c
+C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\parser.c(95,34): warning C4267: инициализация: преобразование из "size_t" в "const int"; возможна потеря данных
+C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\parser.c(142,26): warning C4267: инициализация: преобразование из "size_t" в "const int"; возможна потеря данных
+C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\parser.c(184,26): warning C4267: инициализация: преобразование из "size_t" в "const int"; возможна потеря данных
+  Структуры данных 1 лаба.vcxproj -> C:\Users\anjel\OneDrive\Рабочий стол\язык C\Структуры данных 1 лаба\x64\Debug\Структуры данных 1 лаба.exe

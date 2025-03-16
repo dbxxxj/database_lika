@@ -1,7 +1,9 @@
-#include "parser.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
+#include "parser.h"
+#include "memstat.h"
 
 #pragma warning(disable:4996)
 
@@ -11,24 +13,22 @@ char* strtok_lika(char* origin, const char symbol, char** save_pointer) {
 
     char* start = *save_pointer;
 
-    
     while (*start && *start == symbol) start++;
 
-    if (*start == '\0') return NULL; 
+    if (*start == '\0') return NULL;
 
     char* token = start;
     int flag = 0;
 
     while (**save_pointer) {
         if (**save_pointer == '"' || **save_pointer == '\'')
-            flag = !flag;  
+            flag = !flag;
 
-        else if (!flag && strchr(symbol, **save_pointer)) {
-            **save_pointer = '\0';  
-            (*save_pointer)++;     
+        else if (!flag && **save_pointer == symbol) {  // <-- заменили strchr() на простое сравнение
+            **save_pointer = '\0';
+            (*save_pointer)++;
 
-            
-            while (**save_pointer && strchr(symbol, **save_pointer)) (*save_pointer)++;
+            while (**save_pointer && **save_pointer == symbol) (*save_pointer)++;
 
             return token;
         }
@@ -36,119 +36,58 @@ char* strtok_lika(char* origin, const char symbol, char** save_pointer) {
         (*save_pointer)++;
     }
 
-    *save_pointer = NULL; 
+    *save_pointer = NULL;
     return token;
 }
-struct tm parse_date(const char* date_str) {
-    struct tm tm;
-    memset(&tm, 0, sizeof(struct tm));  // Обнуляем структуру
-    strptime(date_str, "%Y-%m-%d", &tm);  // Парсим строку в структуру tm
-    return tm;
-}
+
 ConditionType get_operator(const char* op_str) {
     if (strcmp(op_str, "==") == 0) return OP_EQUAL;
     if (strcmp(op_str, "!=") == 0) return OP_NOT_EQUAL;
     if (strcmp(op_str, "<") == 0) return OP_LESS;
+    if (strcmp(op_str, "<=") == 0) return OP_LESS_OR_EQUAL;
+    if (strcmp(op_str, ">=") == 0) return OP_GREATER_OR_EQUAL;
     if (strcmp(op_str, ">") == 0) return OP_GREATER;
-    if (strcmp(op_str, "/in/") == 0) return OP_IN;
-    if (strcmp(op_str, "/include/") == 0) return OP_INCLUDE;
+    if (strcmp(op_str, "in") == 0) return OP_IN;
     return -1;
 }
+
+
 int parse_condition(const char* condition_str, Condition* condition) {
     char op[10];
+
+    // Обрабатываем сложные операции (/, /in/, /include/)
     if (sscanf(condition_str, "%49[^!=<>/]/%9[^/]/%99[^\n]",
         condition->field, op, condition->value) == 3) {
         condition->op = get_operator(op);
         return 1;
     }
-    if (sscanf(condition_str, "%49[^!=<>]%1[!=<>]%99[^\n]",
+
+    // Обрабатываем стандартные операции (==, !=, <, >, <=, >=)
+    if (sscanf(condition_str, "%49[^!=<>]%2[!=<>]%99[^\n]",
         condition->field, op, condition->value) == 3) {
         condition->op = get_operator(op);
-        return 1;
     }
-    return 0;
-}
-int check_condition(User user, Condition* condition) {
-    if (condition->op == OP_EQUAL) {
-        if (strcmp(condition->field, "first_name") == 0) {
-            return strcmp(user.first_name, condition->value) == 0;
-        }
-        else if (strcmp(condition->field, "last_name") == 0) {
-            return strcmp(user.last_name, condition->value) == 0;
-        }
-        else if (strcmp(condition->field, "email") == 0) {
-            return strcmp(user.email, condition->value) == 0;
-        }
-        else if (strcmp(condition->field, "status") == 0) {
-            // Сравнение статуса (например, ACTIVE, BANNED, REMOVED)
-            if (strcmp(condition->value, "ACTIVE") == 0) {
-                return user.status == ACTIVE;
-            }
-            else if (strcmp(condition->value, "BANNED") == 0) {
-                return user.status == BANNED;
-            }
-            else if (strcmp(condition->value, "REMOVED") == 0) {
-                return user.status == REMOVED;
-            }
-            else if (strcmp(condition->field, "last_visit") == 0) {
-                struct tm parsed_date = parse_date(condition->value);
-                // Сравниваем структуры tm для времени последнего визита с использованием memcmp
-                return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
-            }
-        else if (strcmp(condition->field, "registration_date") == 0) {
-                struct tm parsed_date = parse_date(condition->value);
-            return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) == 0;
-        }
+    // Обрабатываем условия с кавычками: status!='removed'
+    else if (sscanf(condition_str, "%49[^!=<>]%2[!=<>]%*['\"]%99[^'\"]%*['\"]",
+        condition->field, op, condition->value) == 3) {
+        condition->op = get_operator(op);
     }
+    else return 0; // Ошибка парсинга
 
-    if (condition->op == OP_LESS) {
-        if (strcmp(condition->field, "last_visit") == 0) {
-            struct tm parsed_date = parse_date(condition->value);
-            return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
-        }
-        }
-        else if (strcmp(condition->field, "registration_date") == 0) {
-        struct tm parsed_date = parse_date(condition->value);
-            return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) < 0;
-        }
-    }
-
-    if (condition->op == OP_GREATER) {
-        if (strcmp(condition->field, "last_visit") == 0) {
-            struct tm parsed_date = parse_date(condition->value);
-            return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
-        }
-    }
-    else if (strcmp(condition->field, "registration_date") == 0) {
-        struct tm parsed_date = parse_date(condition->value);
-        return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) < 0;
-    }
-    if (condition->op == OP_IN && strcmp(condition->field, "status") == 0) {
-        char* token;
-        char temp[100];
-        char* savepointer;
-        strcpy(temp, condition->value);
-        token = strtok_lika(temp, "[], ", &savepointer);
-        while (token) {
-            if (strcmp(user.status, token) == 0) return 1;
-            token = strtok_lika(NULL, "[], ", &savepointer);
-        }
-        return 0;
-    }
- return 0;
+    return 1;
 }
 
-void parse_insert(const char* args, User* user) {
-	char temp[256];
-	strncpy(temp, args, sizeof(temp));
-	temp[sizeof(temp) - 1] = '\0';
+int parse_insert(const char* args, User* user) {
+    char temp[256];
+    strncpy(temp, args, sizeof(temp));
+    temp[sizeof(temp) - 1] = '\0';
 
     char* savepointer;
     char* token = strtok_lika(temp, ',', &savepointer);
     while (token) {
         char* equal = strchr(token, '=');
         if (!equal)
-            return;
+            return 0;
 
         *equal = '\0';
         char* key = token;
@@ -190,56 +129,117 @@ void parse_insert(const char* args, User* user) {
 
         else {
             printf("incorrect: %.*s\n", 20, args);
-            return;
+            return 0;
         }
 
         token = strtok_lika(NULL, ',', &savepointer);
     }
+
+    return 1;
 }
-void parse_select(const char* args, User* user,int user_count) {
-    char fields[100][50];  // Массив для хранения полей
-    int field_count = 0;
-    char conditions[100][100];  // Массив для хранения условий
-    int condition_count = 0;
-    char* arg_copy = (char*)malloc(strlen(args) + 1);
-    strcpy(arg_copy, args);
 
+int parse_select(const char* args, ParsedSelectCommand* command) {
+    const int args_len = strlen(args);
+    char* arg_copy = (char*)lika_malloc(args_len + 1);
+    strcpy(arg_copy, args);  // strcpy, потому что строка гарантированно умещается
 
-    char* token = strtok(arg_copy, " ");
-    if (strcmp(token, "select") == 0) {
-        token = strtok(NULL, " ");
-    }
+    char* save_pointer;
+    char* token = strtok_lika(arg_copy, ' ', &save_pointer);
     while (token) {
-        char* field = strtok(token, ",");  
+        char* field_save_pointer;
+        char* field = strtok_lika(token, ',', &field_save_pointer);
         while (field) {
-           
-            strcpy(fields[field_count++], field);
-            field = strtok(NULL, ",");
-        }
-        token = strtok(NULL, " ");
+            // Выделяем память для поля, если массив состоит из указателей
+            command->fields[command->fields_count] = (char*)lika_malloc(strlen(field) + 1);
+            strcpy(command->fields[command->fields_count], field);
+            command->fields_count++;
 
-        if (strchr(token, '=') || strstr(token, "==") || strstr(token, "<") || strstr(token, ">") || strstr(token, "/in/") || strstr(token, "/include/")) {
+            field = strtok_lika(NULL, ',', &field_save_pointer);
+        }
+
+        token = strtok_lika(NULL, ' ', &save_pointer);
+        if (token && (strchr(token, '=') || strstr(token, "==") || strstr(token, "<") ||
+            strstr(token, ">") || strstr(token, "/in/"))) {
             break;
         }
     }
 
-    // Собираем все условия
     while (token) {
-        strcpy(conditions[condition_count++], token);
-        token = strtok(NULL, " ");
+        char condition[40];
+        strcpy(condition, token);
+        if (!parse_condition(condition, &command->conditions[command->conditons_count])) {
+            printf("incorrect: %.*s\n", 20, args);
+            return 0;
+        }
+
+        command->conditons_count++;
+
+        token = strtok_lika(NULL, ' ', &save_pointer);
+    }
+
+    lika_free(arg_copy);
+    return 1;
+}
+int parse_delete(const char* args, Condition* conditions, int* conditions_count) {
+    const int args_len = strlen(args);
+    char* arg_copy = (char*)lika_malloc(args_len + 1);
+    strcpy(arg_copy, args);  
+    char* save_pointer;
+    char* token = strtok_lika(arg_copy, ' ', &save_pointer);
+    token = strtok_lika(NULL, ' ', &save_pointer);
+
+    
+    while (token) {
+       
+        char condition[100];
+        strcpy(condition, token);  
+        
+        if (!parse_condition(condition, &conditions[*conditions_count])) {
+            printf("incorrect: %.*s\n", 20, args);
+            return 0;  
+        }
+
+        (*conditions_count)++;
+
+        token = strtok_lika(NULL, ' ', &save_pointer);
+    }
+
+    
+    lika_free(arg_copy);
+    return 1;  
+}
+
+
+void process_command(const char* command, Database* db) {
+    if (strncmp(command, "insert", 6) == 0) {
+        User user;
+        memset(&user, 0, sizeof(User));
+        if (parse_insert(command + 7, &user))
+            insert(db, user);
+    }
+
+    if (strncmp(command, "select", 6) == 0) {
+        ParsedSelectCommand parsed_command;
+        memset(&parsed_command, 0, sizeof(ParsedSelectCommand));
+        if (parse_select(command + 7, &parsed_command)) {
+            if (!select(db, parsed_command)) {
+                printf("incorrect: %.*s\n", 20, command);
+            }
+        }
+
+        for (int index = 0; index < parsed_command.fields_count; index++) {
+            lika_free(parsed_command.fields[index]);
+        }
+    }
+    if (strncmp(command, "delete", 6) == 0) {
+        Condition* conditions = (Condition*)lika_malloc(10 * sizeof(Condition));
+        int conditions_count = 0;
+        if (parse_delete(command + 7, conditions, &conditions_count)) {
+            delete(db, conditions, conditions_count);
+        }
+
+        lika_free(conditions);
     }
 
 
 }
-
-void process_command(char* command, Database* db) {
-
-	if (strncmp(command, "insert", 6) == 0) {
-        User user;
-        memset(&user, 0, sizeof(User));
-		parse_insert(command + 7, &user);
-        insert(db, user);
-	}
-
-}
-
