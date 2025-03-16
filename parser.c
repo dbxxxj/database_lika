@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include<stdlib>
 
 #pragma warning(disable:4996)
 
@@ -46,6 +45,99 @@ struct tm parse_date(const char* date_str) {
     strptime(date_str, "%Y-%m-%d", &tm);  // ѕарсим строку в структуру tm
     return tm;
 }
+ConditionType get_operator(const char* op_str) {
+    if (strcmp(op_str, "==") == 0) return OP_EQUAL;
+    if (strcmp(op_str, "!=") == 0) return OP_NOT_EQUAL;
+    if (strcmp(op_str, "<") == 0) return OP_LESS;
+    if (strcmp(op_str, ">") == 0) return OP_GREATER;
+    if (strcmp(op_str, "/in/") == 0) return OP_IN;
+    if (strcmp(op_str, "/include/") == 0) return OP_INCLUDE;
+    return -1;
+}
+int parse_condition(const char* condition_str, Condition* condition) {
+    char op[10];
+    if (sscanf(condition_str, "%49[^!=<>/]/%9[^/]/%99[^\n]",
+        condition->field, op, condition->value) == 3) {
+        condition->op = get_operator(op);
+        return 1;
+    }
+    if (sscanf(condition_str, "%49[^!=<>]%1[!=<>]%99[^\n]",
+        condition->field, op, condition->value) == 3) {
+        condition->op = get_operator(op);
+        return 1;
+    }
+    return 0;
+}
+int check_condition(User user, Condition* condition) {
+    if (condition->op == OP_EQUAL) {
+        if (strcmp(condition->field, "first_name") == 0) {
+            return strcmp(user.first_name, condition->value) == 0;
+        }
+        else if (strcmp(condition->field, "last_name") == 0) {
+            return strcmp(user.last_name, condition->value) == 0;
+        }
+        else if (strcmp(condition->field, "email") == 0) {
+            return strcmp(user.email, condition->value) == 0;
+        }
+        else if (strcmp(condition->field, "status") == 0) {
+            // —равнение статуса (например, ACTIVE, BANNED, REMOVED)
+            if (strcmp(condition->value, "ACTIVE") == 0) {
+                return user.status == ACTIVE;
+            }
+            else if (strcmp(condition->value, "BANNED") == 0) {
+                return user.status == BANNED;
+            }
+            else if (strcmp(condition->value, "REMOVED") == 0) {
+                return user.status == REMOVED;
+            }
+            else if (strcmp(condition->field, "last_visit") == 0) {
+                struct tm parsed_date = parse_date(condition->value);
+                // —равниваем структуры tm дл€ времени последнего визита с использованием memcmp
+                return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
+            }
+        else if (strcmp(condition->field, "registration_date") == 0) {
+                struct tm parsed_date = parse_date(condition->value);
+            return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) == 0;
+        }
+    }
+
+    if (condition->op == OP_LESS) {
+        if (strcmp(condition->field, "last_visit") == 0) {
+            struct tm parsed_date = parse_date(condition->value);
+            return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
+        }
+        }
+        else if (strcmp(condition->field, "registration_date") == 0) {
+        struct tm parsed_date = parse_date(condition->value);
+            return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) < 0;
+        }
+    }
+
+    if (condition->op == OP_GREATER) {
+        if (strcmp(condition->field, "last_visit") == 0) {
+            struct tm parsed_date = parse_date(condition->value);
+            return memcmp(&user.last_visit, &parse_date, sizeof(struct tm)) == 0;
+        }
+    }
+    else if (strcmp(condition->field, "registration_date") == 0) {
+        struct tm parsed_date = parse_date(condition->value);
+        return memcmp(&user.registration_date, &parse_date, sizeof(struct tm)) < 0;
+    }
+    if (condition->op == OP_IN && strcmp(condition->field, "status") == 0) {
+        char* token;
+        char temp[100];
+        char* savepointer;
+        strcpy(temp, condition->value);
+        token = strtok_lika(temp, "[], ", &savepointer);
+        while (token) {
+            if (strcmp(user.status, token) == 0) return 1;
+            token = strtok_lika(NULL, "[], ", &savepointer);
+        }
+        return 0;
+    }
+ return 0;
+}
+
 void parse_insert(const char* args, User* user) {
 	char temp[256];
 	strncpy(temp, args, sizeof(temp));
@@ -104,73 +196,40 @@ void parse_insert(const char* args, User* user) {
         token = strtok_lika(NULL, ',', &savepointer);
     }
 }
-void parse_select(const char* args, Database* db) {
-    ConditionType get_operator(const char* op_str) {
-        if (strcmp(op_str, "==") == 0) return OP_EQUAL;
-        if (strcmp(op_str, "!=") == 0) return OP_NOT_EQUAL;
-        if (strcmp(op_str, "<") == 0) return OP_LESS;
-        if (strcmp(op_str, ">") == 0) return OP_GREATER;
-        if (strcmp(op_str, "/in/") == 0) return OP_IN;
-        if (strcmp(op_str, "/include/") == 0) return OP_INCLUDE;
-        return -1;
-    }
-    int parse_condition(const char* condition_str, Condition * condition) {
-        char op[10];
-        if (sscanf(condition_str, "%49[^!=<>/]/%9[^/]/%99[^\n]",
-            condition->field, op, condition->value) == 3) {
-            condition->op = get_operator(op);
-            return 1;
-        }
-        if (sscanf(condition_str, "%49[^!=<>]%1[!=<>]%99[^\n]",
-            condition->field, op, condition->value) == 3) {
-            condition->op = get_operator(op);
-            return 1;
-        }
-        return 0;
-    }
-    int check_condition(User user, Condition * condition) {
-        if (condition->op == OP_EQUAL) {
-            if (strcmp(condition->field, "first_name") == 0) {
-                return strcmp(user.first_name, condition->value) == 0;
-            }
-            else if (strcmp(condition->field, "last_name") == 0) {
-                return strcmp(user.last_name, condition->value) == 0;
-            }
-            else if (strcmp(condition->field, "status") == 0) {
-                return strcmp(user.status, condition->value) == 0;
-            }
-            else if (strcmp(condition->field, "age") == 0) {
-                return user.age == atoi(condition->value);
-            }
-            else if (strcmp(condition->field, "birthday") == 0) {
-                // —равниваем структуры tm с использованием memcmp
-                return memcmp(&user.birthday, &parse_date(condition->value), sizeof(struct tm)) == 0;
-            }
-        }
+void parse_select(const char* args, User* user,int user_count) {
+    char fields[100][50];  // ћассив дл€ хранени€ полей
+    int field_count = 0;
+    char conditions[100][100];  // ћассив дл€ хранени€ условий
+    int condition_count = 0;
+    char* arg_copy = (char*)malloc(strlen(args) + 1);
+    strcpy(arg_copy, args);
 
-        if (condition->op == OP_LESS) {
-            if (strcmp(condition->field, "age") == 0) {
-                return user.age < atoi(condition->value);
-            }
-            else if (strcmp(condition->field, "birthday") == 0) {
-                // —равниваем структуры tm с использованием memcmp
-                return memcmp(&user.birthday, &parse_date(condition->value), sizeof(struct tm)) < 0;
-            }
-        }
 
-        if (condition->op == OP_GREATER) {
-            if (strcmp(condition->field, "age") == 0) {
-                return user.age > atoi(condition->value);
-            }
-            else if (strcmp(condition->field, "birthday") == 0) {
-                // —равниваем структуры tm с использованием memcmp
-                return memcmp(&user.birthday, &parse_date(condition->value), sizeof(struct tm)) > 0;
-            }
-        }
-
-            // ¬озвращаем 0, если ни одно из условий не выполнено
-       return 0;
+    char* token = strtok(arg_copy, " ");
+    if (strcmp(token, "select") == 0) {
+        token = strtok(NULL, " ");
     }
+    while (token) {
+        char* field = strtok(token, ",");  
+        while (field) {
+           
+            strcpy(fields[field_count++], field);
+            field = strtok(NULL, ",");
+        }
+        token = strtok(NULL, " ");
+
+        if (strchr(token, '=') || strstr(token, "==") || strstr(token, "<") || strstr(token, ">") || strstr(token, "/in/") || strstr(token, "/include/")) {
+            break;
+        }
+    }
+
+    // —обираем все услови€
+    while (token) {
+        strcpy(conditions[condition_count++], token);
+        token = strtok(NULL, " ");
+    }
+
+
 }
 
 void process_command(char* command, Database* db) {
