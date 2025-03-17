@@ -61,8 +61,6 @@ typedef struct {
 
 } ParsedUpdateCommand;
 int update(Database* db, ParsedUpdateCommand command);
-
-
 int insert(Database* db, User user);
 int select(Database* db, ParsedSelectCommand command);
 int delete(Database* db, Condition* conditions, int conditions_count);

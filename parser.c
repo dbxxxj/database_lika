@@ -232,7 +232,7 @@ int parse_update(const char* args, ParsedUpdateCommand* command) {
                 return 0;
 
         command->updating_fields[command->fields_count] = (char*)lika_malloc(key_length + 1);
-        strncpy(command->updating_fields[command->fields_count], field, key_length);
+        strncpy(command->updating_fields[command->fields_count], field, key_length+1);
         command->fields_count++;
 
         if (strcmp(key, "uid") == 0) {

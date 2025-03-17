@@ -315,6 +315,7 @@ int delete (Database* db, Condition* conditions, int conditions_count){
     return 1; 
 }
 
+
 int update(Database* db, ParsedUpdateCommand command) {
     int updated_count = 0;
     Node* current = db->head;
